@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Mission Zahlenzauber – Interaktiver Mathe-Bound</title>
+<style>
+:root{
+  --bg:#f6f2ff; --card:#ffffff; --ink:#182033; --muted:#64748b;
+  --primary:#6d28d9; --primary2:#8b5cf6; --ok:#15803d; --bad:#b91c1c;
+  --gold:#f59e0b; --line:#ddd6fe;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  background:linear-gradient(135deg,#f8fafc,#ede9fe); color:var(--ink);
+}
+header{
+  position:sticky; top:0; z-index:10; background:rgba(255,255,255,.95);
+  border-bottom:1px solid var(--line); backdrop-filter:blur(8px);
+}
+.topbar{max-width:920px;margin:auto;padding:10px 16px;display:flex;gap:12px;align-items:center;justify-content:space-between}
+.brand{font-weight:900}
+.progress{flex:1;max-width:420px;height:12px;background:#ede9fe;border-radius:999px;overflow:hidden}
+.progress > div{height:100%;width:0;background:linear-gradient(90deg,var(--primary),var(--gold));transition:.3s}
+.score{font-weight:800;white-space:nowrap}
+main{max-width:920px;margin:auto;padding:22px 16px 80px}
+.card{
+  background:var(--card); border:1px solid var(--line); border-radius:24px;
+  padding:22px; box-shadow:0 12px 30px rgba(76,29,149,.08); margin:16px 0;
+}
+h1{font-size:clamp(2rem,6vw,3.5rem);margin:.2em 0}
+h2{font-size:clamp(1.45rem,4vw,2.2rem);margin:.2em 0 .6em}
+h3{margin-top:1.3em}
+.lead{font-size:1.14rem;line-height:1.6}
+.badge{display:inline-block;background:#ede9fe;color:#5b21b6;padding:6px 10px;border-radius:999px;font-weight:800;margin:2px}
+button,.btn{
+  border:0;border-radius:14px;padding:13px 18px;font-size:1rem;font-weight:800;
+  background:var(--primary);color:white;cursor:pointer;box-shadow:0 6px 14px rgba(109,40,217,.2);
+}
+button.secondary{background:#e2e8f0;color:#1e293b;box-shadow:none}
+button.gold{background:var(--gold);color:#3b2500}
+button:disabled{opacity:.45;cursor:not-allowed}
+input,select,textarea{
+  width:100%;padding:13px;border:2px solid #ddd6fe;border-radius:12px;font-size:1.05rem;margin:7px 0 12px;
+}
+input:focus,textarea:focus{outline:3px solid #c4b5fd}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.choice{display:flex;gap:8px;flex-wrap:wrap}
+.choice button{background:#f1f5f9;color:#1e293b;box-shadow:none}
+.choice button.selected{background:#c4b5fd;color:#3b0764}
+.feedback{padding:12px 14px;border-radius:12px;margin:10px 0;font-weight:800;display:none}
+.feedback.ok{display:block;background:#dcfce7;color:#166534}
+.feedback.bad{display:block;background:#fee2e2;color:#991b1b}
+.route{background:#fff7ed;border:2px dashed #fb923c;padding:16px;border-radius:16px;font-size:1.12rem}
+.mission{display:none}
+.mission.active{display:block;animation:fade .25s}
+@keyframes fade{from{opacity:.3;transform:translateY(8px)}to{opacity:1;transform:none}}
+.bigemoji{font-size:4rem}
+.task{border-left:5px solid var(--primary2);padding:12px 16px;background:#faf5ff;border-radius:12px;margin:12px 0}
+.photo-box{border:2px dashed #94a3b8;padding:16px;border-radius:14px;background:#f8fafc}
+footer{text-align:center;color:var(--muted);padding:30px}
+.teacher{background:#0f172a;color:#f8fafc}
+.teacher input{background:#1e293b;color:white;border-color:#475569}
+.qr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.qr-card{background:white;color:#111827;padding:12px;border-radius:12px;text-align:center;border:1px solid #cbd5e1}
+.qr-card img{width:150px;height:150px;object-fit:contain}
+.small{font-size:.9rem;color:var(--muted)}
+.hidden{display:none!important}
+.confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:99}
+.confetti span{position:absolute;top:-20px;font-size:24px;animation:fall 3.5s linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+@media print{
+  header,.no-print,#appView{display:none!important}
+  body{background:white}
+  .teacher{display:block!important;background:white;color:black}
+  .teacher input{display:none}
+  .qr-card{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="topbar">
+    <div class="brand">🔮 Zahlenzauber</div>
+    <div class="progress"><div id="progressBar"></div></div>
+    <div class="score"><span id="score">0</span> ⭐</div>
+  </div>
+</header>
+
+<main>
+<section id="start" class="card">
+  <div class="bigemoji">🧙‍♂️🔢💎</div>
+  <h1>Mission Zahlenzauber</h1>
+  <p class="lead">Der Zahlenzauberer Numerix hat zwölf Mathe-Kristalle in der Schule versteckt. Nur ein starkes Team kann sie zurückholen.</p>
+  <div>
+    <span class="badge">1. Klasse</span><span class="badge">12 Missionen</span><span class="badge">Teamspiel</span>
+  </div>
+  <label for="teamName"><h3>Wie heißt euer Team?</h3></label>
+  <input id="teamName" placeholder="Zum Beispiel: Die Rechenfüchse" maxlength="30">
+  <label for="members">Wer gehört zum Team?</label>
+  <input id="members" placeholder="Namen der Kinder" maxlength="80">
+  <button onclick="startGame()">Mission starten</button>
+  <button class="secondary" onclick="openTeacher()">Lehrkraft-Bereich</button>
+</section>
+
+<section id="appView" class="hidden">
+  <div id="missionContainer"></div>
+</section>
+
+<section id="teacher" class="card teacher hidden">
+  <h2>🧑‍🏫 Lehrkraft-Bereich</h2>
+  <p>Hier kannst du den Basis-Link eintragen. Daraus werden QR-Codes erzeugt, die direkt zur jeweiligen Mission führen. Wird die Datei nur lokal geöffnet, funktionieren stattdessen immer die Stationscodes.</p>
+  <label>Öffentliche Adresse der HTML-Datei (optional)</label>
+  <input id="baseUrl" placeholder="https://deine-schule.de/zahlenzauber.html">
+  <div class="choice no-print">
+    <button onclick="makeQRCards()">QR-Karten erzeugen</button>
+    <button class="secondary" onclick="window.print()">Stationskarten drucken</button>
+    <button class="secondary" onclick="resetGame()">Spielstand löschen</button>
+    <button class="secondary" onclick="closeTeacher()">Zurück</button>
+  </div>
+  <div id="qrCards" class="qr-grid"></div>
+  <hr>
+  <h3>Material</h3>
+  <p>Lineal oder Maßband, Zehnerstangen/Einerwürfel, sechs Zahlenkarten, Stifte, Schatzkiste, kleine Belohnungen. Hänge die Stationskarten an die angegebenen Orte. Auf jeder Karte steht zusätzlich ein Code, falls das Scannen nicht klappt.</p>
+  <h3>Lösungen und Reihenfolge</h3>
+  <p>Die Lösungen werden automatisch geprüft. Der finale Code lautet <strong>3964</strong>. Die Orte können unten im Quelltext im Array <code>missions</code> leicht geändert werden.</p>
+</section>
+</main>
+
+<footer>Mission Zahlenzauber · Interaktiver Mathe-Bound für Klasse 1</footer>
+<div id="confetti" class="confetti"></div>
+
+<script>
+const missions = [
+{
+ id:1, icon:"🔎", title:"Zahlendetektive", place:"Sucht den ersten QR-Code im Klassenraum bei der Tafel.",
+ code:"TAFEL5", points:10,
+ story:"Der erste Kristall ist unsichtbar geworden. Zahlen machen ihn wieder sichtbar!",
+ body:`
+ <div class="task"><strong>Suchauftrag:</strong> Findet im Klassenraum fünf Zahlen: eine kleiner als 10, eine größer als 10, eine gerade, eine ungerade und eure Lieblingszahl.</div>
+ <div class="photo-box">📷 Macht mit dem Gerät ein Foto von mindestens einer gefundenen Zahl.<input type="file" accept="image/*" capture="environment"></div>
+ <label>Wie viele verschiedene Zahlen solltet ihr finden?</label>
+ <input id="a1" inputmode="numeric" placeholder="Zahl eingeben">`,
+ check:()=>val("a1")==="5"
+},
+{
+ id:2, icon:"👾", title:"Zahlenmonster", place:"Geht zur Garderobe. Dort wartet der nächste Code.",
+ code:"JACKE3", points:10,
+ story:"Das Zahlenmonster hat alle Zahlen durcheinandergebracht.",
+ body:`
+ <div class="task">Sortiert diese Zahlen von klein nach groß: <strong>8 · 15 · 3 · 20 · 11 · 18</strong></div>
+ <label>Welche Zahl ist die kleinste?</label><input id="a2a" inputmode="numeric">
+ <label>Welche Zahl ist die größte?</label><input id="a2b" inputmode="numeric">`,
+ check:()=>val("a2a")==="3" && val("a2b")==="20"
+},
+{
+ id:3, icon:"➕", title:"Plus-Park", place:"Sucht die Station bei der Leseecke oder in der Schulbücherei.",
+ code:"BUCH11", points:10,
+ story:"Im Plus-Park wachsen Ergebnisse. Findet das größte!",
+ body:`
+ <div class="grid">
+ <div><label>7 + 4</label><input id="a3a" inputmode="numeric"></div>
+ <div><label>5 + 6</label><input id="a3b" inputmode="numeric"></div>
+ <div><label>9 + 3</label><input id="a3c" inputmode="numeric"></div>
+ <div><label>8 + 5</label><input id="a3d" inputmode="numeric"></div>
+ <div><label>10 + 7</label><input id="a3e" inputmode="numeric"></div>
+ </div>`,
+ check:()=>["11","11","12","13","17"].every((x,i)=>val(["a3a","a3b","a3c","a3d","a3e"][i])===x)
+},
+{
+ id:4, icon:"🐉", title:"Minus-Monster", place:"Geht in den Flur zur Tür eures Klassenraums.",
+ code:"TUER10", points:10,
+ story:"Der Minusdrache bewacht Kristall Nummer vier.",
+ body:`
+ <div class="grid">
+ <div><label>15 − 5</label><input id="a4a" inputmode="numeric"></div>
+ <div><label>17 − 8</label><input id="a4b" inputmode="numeric"></div>
+ <div><label>20 − 6</label><input id="a4c" inputmode="numeric"></div>
+ <div><label>13 − 7</label><input id="a4d" inputmode="numeric"></div>
+ <div><label>18 − 9</label><input id="a4e" inputmode="numeric"></div>
+ </div>
+ <div class="photo-box">📷 Bonus: Fotografiert euch gemeinsam wie ein Drache.<input type="file" accept="image/*" capture="user"></div>`,
+ check:()=>["10","9","14","6","9"].every((x,i)=>val(["a4a","a4b","a4c","a4d","a4e"][i])===x)
+},
+{
+ id:5, icon:"🔺", title:"Formendetektive", place:"Sucht den Code in der Nähe eines Fensters.",
+ code:"FENSTER4", points:10,
+ story:"Die Formenfabrik braucht eure Hilfe.",
+ body:`
+ <div class="task">Findet in der Schule einen Kreis, ein Quadrat, ein Rechteck und ein Dreieck.</div>
+ <div class="photo-box">📷 Fotografiert eine gefundene Form.<input type="file" accept="image/*" capture="environment"></div>
+ <label>Wie viele Ecken hat ein Quadrat?</label><input id="a5" inputmode="numeric">`,
+ check:()=>val("a5")==="4"
+},
+{
+ id:6, icon:"🧪", title:"Zehner-und-Einer-Labor", place:"Geht zu dem Platz, an dem Rechenmaterial aufbewahrt wird.",
+ code:"LABOR18", points:10,
+ story:"Professor Plus hat Zahlen zerlegt.",
+ body:`
+ <div class="grid">
+ <div><label>14 = wie viele Zehner?</label><input id="a6a" inputmode="numeric"></div>
+ <div><label>14 = wie viele Einer?</label><input id="a6b" inputmode="numeric"></div>
+ <div><label>20 = wie viele Zehner?</label><input id="a6c" inputmode="numeric"></div>
+ <div><label>20 = wie viele Einer?</label><input id="a6d" inputmode="numeric"></div>
+ </div>
+ <div class="task">Legt gemeinsam die Zahl 18 mit Zehnerstangen und Einerwürfeln.</div>
+ <div class="photo-box">📷 Fotografiert euer Ergebnis.<input type="file" accept="image/*" capture="environment"></div>`,
+ check:()=>val("a6a")==="1"&&val("a6b")==="4"&&val("a6c")==="2"&&val("a6d")==="0"
+},
+{
+ id:7, icon:"🕵️", title:"Mathe-Detektiv", place:"Sucht den Hinweis bei den Trinkflaschen.",
+ code:"WASSER13", points:10,
+ story:"Löst den Fall mit vier Rechengeschichten.",
+ body:`
+ <div class="grid">
+ <div><label>Emma hat 8 Äpfel und bekommt 5 dazu.</label><input id="a7a" inputmode="numeric"></div>
+ <div><label>Tom hat 17 Murmeln und verliert 6.</label><input id="a7b" inputmode="numeric"></div>
+ <div><label>Im Bus sitzen 9 Kinder, 3 steigen ein.</label><input id="a7c" inputmode="numeric"></div>
+ <div><label>20 Vögel sitzen im Baum, 5 fliegen weg.</label><input id="a7d" inputmode="numeric"></div>
+ </div>`,
+ check:()=>["13","11","12","15"].every((x,i)=>val(["a7a","a7b","a7c","a7d"][i])===x)
+},
+{
+ id:8, icon:"🧩", title:"Mustermeister", place:"Geht zu einem langen freien Stück Flur.",
+ code:"MUSTER10", points:10,
+ story:"Die Zaubermuster sind unterbrochen.",
+ body:`
+ <label>2 · 4 · 6 · 8 · …</label><input id="a8a" inputmode="numeric">
+ <label>Welche Zahl kommt nach 16?</label><input id="a8b" inputmode="numeric">
+ <label>Welche Zahl kommt vor 10?</label><input id="a8c" inputmode="numeric">
+ <div class="task">Bewegungsmuster: klatschen – springen – klatschen – springen. Führt es zweimal gemeinsam aus.</div>`,
+ check:()=>val("a8a")==="10"&&val("a8b")==="17"&&val("a8c")==="9"
+},
+{
+ id:9, icon:"📏", title:"Messmeister", place:"Sucht die Station bei einem großen Tisch.",
+ code:"TISCH20", points:10,
+ story:"Im Raum der Längen zählt genaues Messen.",
+ body:`
+ <div class="task">Schätzt zuerst und messt dann: Bleistift, Federmappe und Tisch.</div>
+ <label>Womit misst man eine Länge?</label>
+ <select id="a9"><option value="">Bitte wählen</option><option>Würfel</option><option>Lineal</option><option>Schere</option></select>
+ <div class="photo-box">📷 Findet etwas, das ungefähr 20 cm lang ist.<input type="file" accept="image/*" capture="environment"></div>`,
+ check:()=>val("a9")==="Lineal"
+},
+{
+ id:10, icon:"🏃", title:"Zahlenlauf", place:"Geht zur Treppe oder zu einem sicheren freien Flurbereich.",
+ code:"LAUF19", points:10,
+ story:"Die Zahlen sind aus dem Zahlenstrahl gefallen.",
+ body:`
+ <div class="grid">
+ <div><label>Welche Zahl kommt vor 13?</label><input id="a10a" inputmode="numeric"></div>
+ <div><label>Welche Zahl kommt nach 18?</label><input id="a10b" inputmode="numeric"></div>
+ <div><label>Welche Zahl liegt zwischen 9 und 11?</label><input id="a10c" inputmode="numeric"></div>
+ </div>
+ <div class="task">Lauft gemeinsam zur Zahl 16, dann zur Zahl 13 und zuletzt zur Zahl 19. Die Lehrkraft kann Zahlenkarten auslegen.</div>`,
+ check:()=>val("a10a")==="12"&&val("a10b")==="19"&&val("a10c")==="10"
+},
+{
+ id:11, icon:"🔐", title:"QR-Geheimnis", place:"Sucht vier kleine Hinweis-Karten in der Nähe des Sekretariats, aber bleibt leise.",
+ code:"LEISE4", points:15,
+ story:"Vier Rätsel ergeben den geheimen Zahlencode.",
+ body:`
+ <div class="grid">
+ <div><label>6 + 7 =</label><input id="a11a" inputmode="numeric"></div>
+ <div><label>18 − 9 =</label><input id="a11b" inputmode="numeric"></div>
+ <div><label>10 − □ = 4. Welche Zahl fehlt?</label><input id="a11c" inputmode="numeric"></div>
+ <div><label>Wie viele gleich lange Seiten hat ein Quadrat?</label><input id="a11d" inputmode="numeric"></div>
+ </div>
+ <p class="small">Merkt euch jeweils die Einerstelle beziehungsweise die gefragte Zahl: 3 · 9 · 6 · 4.</p>`,
+ check:()=>val("a11a")==="13"&&val("a11b")==="9"&&val("a11c")==="6"&&val("a11d")==="4"
+},
+{
+ id:12, icon:"💎", title:"Der Zahlenschatz", place:"Kehrt in den Klassenraum zurück. Die Schatzkiste wartet bei der Lehrkraft.",
+ code:"SCHATZ", points:20,
+ story:"Nur der vierstellige Code öffnet die Schatzkiste.",
+ body:`
+ <label>Gebt den geheimen Code ein.</label><input id="a12" inputmode="numeric" maxlength="4" placeholder="Vier Ziffern">
+ <div class="photo-box">📷 Nach dem Öffnen: Macht ein Siegerfoto mit eurem Team.<input type="file" accept="image/*" capture="user"></div>`,
+ check:()=>val("a12")==="3964"
+}
+];
+
+let state = JSON.parse(localStorage.getItem("zahlenzauberState")||"null") || {
+ current:1, score:0, completed:[], team:"", members:""
+};
+
+function val(id){ const e=document.getElementById(id); return e ? e.value.trim() : ""; }
+function save(){ localStorage.setItem("zahlenzauberState",JSON.stringify(state)); }
+function startGame(){
+ const team=val("teamName");
+ if(!team){ alert("Bitte gebt eurem Team zuerst einen Namen."); return; }
+ state.team=team; state.members=val("members"); save();
+ document.getElementById("start").classList.add("hidden");
+ document.getElementById("appView").classList.remove("hidden");
+ renderMission();
+}
+function renderMission(){
+ const m=missions[state.current-1];
+ const unlocked=state.current===1;
+ document.getElementById("missionContainer").innerHTML=`
+ <section class="card mission active">
+   <div class="bigemoji">${m.icon}</div>
+   <div class="small">Mission ${m.id} von 12 · Team ${escapeHtml(state.team)}</div>
+   <h2>${m.title}</h2>
+   <p class="lead">${m.story}</p>
+   <div class="route"><strong>📍 Nächster Weg:</strong> ${m.place}</div>
+   <div id="unlockBox" class="${unlocked?'hidden':''}">
+     <h3>Stationscode</h3>
+     <p>Scannt den QR-Code an der Station oder gebt den darunterstehenden Code ein.</p>
+     <input id="stationCode" autocomplete="off" placeholder="Code eingeben">
+     <button onclick="unlockMission()">Mission öffnen</button>
+     <div id="unlockFeedback" class="feedback"></div>
+   </div>
+   <div id="taskBox" class="${unlocked?'':'hidden'}">
+     ${m.body}
+     <button class="gold" onclick="checkMission()">Antworten prüfen</button>
+     <div id="feedback" class="feedback"></div>
+   </div>
+ </section>`;
+ updateHeader();
+}
+function unlockMission(){
+ const m=missions[state.current-1];
+ if(val("stationCode").toUpperCase()===m.code){
+   document.getElementById("unlockBox").classList.add("hidden");
+   document.getElementById("taskBox").classList.remove("hidden");
+ } else {
+   showFeedback("unlockFeedback","Der Code passt noch nicht. Schaut genau auf die Stationskarte.",false);
+ }
+}
+function checkMission(){
+ const m=missions[state.current-1];
+ if(m.check()){
+   if(!state.completed.includes(m.id)){
+     state.completed.push(m.id); state.score+=m.points; save();
+   }
+   showFeedback("feedback",`Richtig! Ihr bekommt ${m.points} Sterne und rettet Kristall ${m.id}.`,true);
+   confetti();
+   setTimeout(()=>{
+     if(state.current<12){ state.current++; save(); renderMission(); window.scrollTo({top:0,behavior:"smooth"}); }
+     else finishGame();
+   },1300);
+ } else {
+   showFeedback("feedback","Noch nicht ganz. Rechnet gemeinsam nach und versucht es erneut.",false);
+ }
+}
+function finishGame(){
+ document.getElementById("missionContainer").innerHTML=`
+ <section class="card mission active" style="text-align:center">
+ <div class="bigemoji">🏆💎🎉</div>
+ <h1>Geschafft!</h1>
+ <p class="lead"><strong>${escapeHtml(state.team)}</strong> hat alle zwölf Zahlenkristalle gerettet.</p>
+ <h2>${state.score} Sterne</h2>
+ <p>Ihr seid jetzt offiziell <strong>Matheheldinnen und Mathehelden der 1. Klasse</strong>.</p>
+ <div class="task">Sagt euch gegenseitig: „Das hast du heute besonders gut gemacht!“</div>
+ <button onclick="showCertificate()">Urkunde anzeigen</button>
+ </section>`;
+ updateHeader(); confetti(45);
+}
+function showCertificate(){
+ const w=window.open("","_blank");
+ w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Urkunde</title>
+ <style>body{font-family:Georgia,serif;text-align:center;padding:60px;border:18px double #6d28d9;margin:25px}h1{font-size:48px}h2{font-size:34px;color:#6d28d9}.line{border-bottom:2px solid #111;margin:45px auto;width:70%}</style></head>
+ <body><h1>🏅 Urkunde 🏅</h1><h2>Mathehelden der 1. Klasse</h2>
+ <p>Das Team</p><h2>${escapeHtml(state.team)}</h2><p>mit ${escapeHtml(state.members||"seinen Teammitgliedern")}</p>
+ <p>hat erfolgreich alle zwölf Missionen des interaktiven Mathe-Bounds „Mission Zahlenzauber“ gemeistert.</p>
+ <p><strong>${state.score} Sterne</strong></p><div class="line"></div><p>Datum und Unterschrift</p>
+ <script>window.onload=()=>window.print()<\/script></body></html>`);
+ w.document.close();
+}
+function updateHeader(){
+ document.getElementById("score").textContent=state.score;
+ document.getElementById("progressBar").style.width=((state.completed.length/12)*100)+"%";
+}
+function showFeedback(id,text,ok){
+ const e=document.getElementById(id); e.textContent=text; e.className="feedback "+(ok?"ok":"bad");
+}
+function confetti(n=25){
+ const c=document.getElementById("confetti"); const icons=["⭐","🎉","💎","➕","🔢"];
+ for(let i=0;i<n;i++){ const s=document.createElement("span"); s.textContent=icons[Math.floor(Math.random()*icons.length)];
+ s.style.left=Math.random()*100+"vw"; s.style.animationDelay=Math.random()*.8+"s"; c.appendChild(s); setTimeout(()=>s.remove(),4500); }
+}
+function openTeacher(){ document.getElementById("teacher").classList.remove("hidden"); document.getElementById("start").classList.add("hidden"); makeQRCards(); }
+function closeTeacher(){ document.getElementById("teacher").classList.add("hidden"); document.getElementById("start").classList.remove("hidden"); }
+function resetGame(){ if(confirm("Wirklich den gesamten Spielstand löschen?")){ localStorage.removeItem("zahlenzauberState"); location.reload(); } }
+function makeQRCards(){
+ const base=val("baseUrl") || location.href.split("#")[0];
+ const box=document.getElementById("qrCards");
+ box.innerHTML=missions.map(m=>{
+   const data=encodeURIComponent(base+"#mission="+m.id+"&code="+m.code);
+   const qr=`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${data}`;
+   return `<div class="qr-card"><h3>${m.icon} Station ${m.id}</h3><img src="${qr}" alt="QR-Code Station ${m.id}"><p><strong>${m.title}</strong></p><p>Code: <strong>${m.code}</strong></p><p class="small">${m.place}</p></div>`;
+ }).join("");
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));}
+
+// Direkte QR-Links verarbeiten
+(function(){
+ const h=new URLSearchParams(location.hash.replace("#",""));
+ const mid=Number(h.get("mission")); const code=h.get("code");
+ if(mid>=1&&mid<=12){
+   state.current=mid; save();
+ }
+ if(state.team){
+   document.getElementById("start").classList.add("hidden");
+   document.getElementById("appView").classList.remove("hidden");
+   renderMission();
+   if(code){
+     setTimeout(()=>{ const e=document.getElementById("stationCode"); if(e){e.value=code; unlockMission();}},100);
+   }
+ } else updateHeader();
+})();
+</script>
+</body>
+</html>
